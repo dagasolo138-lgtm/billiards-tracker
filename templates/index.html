@@ -1,0 +1,46 @@
+{% extends "base.html" %} {% block title %}棣栭〉 - 鍙扮悆缁冪悆璁板綍{% endblock %} {% block content %}
+褰撳墠妗ｄ綅
+妗ｄ綅
+            {% for level in range(1, 9) %}
+                 {{ level }} 妗�
+            {% endfor %}
+         淇濆瓨
+{{ current_level }} 妗ｈ缁冮」鐩�
+{% if drills %} {% for drill in drills %} {% endfor %}
+椤圭洰
+榛樿鐩爣
+姣忕粍鏁伴噺
+绫诲瀷
+{{ drill['name'] }}
+{{ drill['default_target_count'] }}
+{{ drill['default_set_size'] }}
+{{ '鑷畾涔�' if drill['is_custom'] else '棰勮' }}
+{% else %}
+褰撳墠妗ｄ綅鏆傛棤棰勮椤圭洰锛屽彲鐩存帴娣诲姞鑷畾涔夐」鐩€�
+{% endif %}
+鏂板鑷畾涔夎缁冮」鐩�
+椤圭洰鍚嶇О 鐩爣鏁伴噺 姣忕粍鏁伴噺 鎵€灞炴。浣�
+                {% for level in range(1, 9) %}
+                    {{ level }} 妗�
+                {% endfor %}
+             娣诲姞椤圭洰
+鏂板缁冧範璁板綍
+鏃ユ湡 鎬绘椂闀匡紙鍒嗛挓锛� 鐘舵€佽瘎鍒嗭紙1-5锛�
+                {% for rating in range(1, 6) %}
+                    {{ rating }}
+                {% endfor %}
+             澶囨敞 淇濆瓨璁板綍
+鏈€杩戠粌涔犺褰�
+{% if recent_sessions %} {% for session in recent_sessions %} {% endfor %}
+鏃ユ湡
+鎬绘椂闀�
+鐘舵€佽瘎鍒�
+澶囨敞
+{{ session['practice_date'] }}
+{{ session['total_duration_minutes'] }} 鍒嗛挓
+{{ session['state_rating'] }}
+{{ session['note'] or '-' }}
+{% else %}
+鏆傛棤缁冧範璁板綍銆�
+{% endif %}
+{% endblock %}
