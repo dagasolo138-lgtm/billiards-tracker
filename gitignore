@@ -1,0 +1,14 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual env
+.venv/
+venv/
+
+# SQLite database
+*.db
+*.sqlite3
+
+# OS files
+.DS_Store
