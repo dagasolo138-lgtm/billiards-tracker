@@ -290,6 +290,79 @@ def get_recent_sessions(limit: int = 10):
         ).fetchall()
 
 
+def get_session_by_id(session_id: int) -> Optional[sqlite3.Row]:
+    """按 id 读取单条练习主记录。"""
+    with get_connection() as connection:
+        return connection.execute(
+            "SELECT * FROM sessions WHERE id = ?;",
+            (session_id,),
+        ).fetchone()
+
+
+def create_drill_log(
+    session_id: int,
+    drill_id: int,
+    set_count: int,
+    success_rate: float,
+    subjective_difficulty: int,
+) -> int:
+    """创建单条训练项目记录，并返回 drill_log_id。"""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO drill_logs (
+                session_id,
+                drill_id,
+                set_count,
+                success_rate,
+                subjective_difficulty
+            )
+            VALUES (?, ?, ?, ?, ?);
+            """,
+            (
+                session_id,
+                drill_id,
+                set_count,
+                success_rate,
+                subjective_difficulty,
+            ),
+        )
+        connection.commit()
+        return cursor.lastrowid
+
+
+def get_drill_logs_by_session(session_id: int):
+    """读取某次练习下的全部项目记录。"""
+    with get_connection() as connection:
+        return connection.execute(
+            """
+            SELECT
+                drill_logs.*, 
+                drills.name AS drill_name,
+                drills.default_target_count,
+                drills.default_set_size
+            FROM drill_logs
+            INNER JOIN drills ON drill_logs.drill_id = drills.id
+            WHERE drill_logs.session_id = ?
+            ORDER BY drill_logs.id ASC;
+            """,
+            (session_id,),
+        ).fetchall()
+
+
+def delete_drill_logs_by_session(session_id: int) -> None:
+    """删除某次练习下已有的项目记录。
+
+    用于重新提交 drill_logs 时覆盖旧值，避免同一个项目重复插入。
+    """
+    with get_connection() as connection:
+        connection.execute(
+            "DELETE FROM drill_logs WHERE session_id = ?;",
+            (session_id,),
+        )
+        connection.commit()
+
+
 if __name__ == "__main__":
     init_db()
     print(f"数据库已初始化：{DB_PATH}")
