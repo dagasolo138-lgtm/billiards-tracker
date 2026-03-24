@@ -1,46 +1,136 @@
-{% extends "base.html" %} {% block title %}棣栭〉 - 鍙扮悆缁冪悆璁板綍{% endblock %} {% block content %}
-褰撳墠妗ｄ綅
-妗ｄ綅
+{% extends "base.html" %}
+
+{% block title %}首页 - 台球练球记录{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h2>当前档位</h2>
+    <form method="post" action="{{ url_for('set_level') }}" class="inline-form">
+        <label for="level">档位</label>
+        <select id="level" name="level">
             {% for level in range(1, 9) %}
-                 {{ level }} 妗�
+                <option value="{{ level }}" {% if level == current_level %}selected{% endif %}>
+                    {{ level }} 档
+                </option>
             {% endfor %}
-         淇濆瓨
-{{ current_level }} 妗ｈ缁冮」鐩�
-{% if drills %} {% for drill in drills %} {% endfor %}
-椤圭洰
-榛樿鐩爣
-姣忕粍鏁伴噺
-绫诲瀷
-{{ drill['name'] }}
-{{ drill['default_target_count'] }}
-{{ drill['default_set_size'] }}
-{{ '鑷畾涔�' if drill['is_custom'] else '棰勮' }}
-{% else %}
-褰撳墠妗ｄ綅鏆傛棤棰勮椤圭洰锛屽彲鐩存帴娣诲姞鑷畾涔夐」鐩€�
-{% endif %}
-鏂板鑷畾涔夎缁冮」鐩�
-椤圭洰鍚嶇О 鐩爣鏁伴噺 姣忕粍鏁伴噺 鎵€灞炴。浣�
+        </select>
+        <button type="submit">保存</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>{{ current_level }} 档训练项目</h2>
+    {% if drills %}
+        <table>
+            <thead>
+                <tr>
+                    <th>项目</th>
+                    <th>默认目标</th>
+                    <th>每组数量</th>
+                    <th>类型</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for drill in drills %}
+                    <tr>
+                        <td>{{ drill['name'] }}</td>
+                        <td>{{ drill['default_target_count'] }}</td>
+                        <td>{{ drill['default_set_size'] }}</td>
+                        <td>{{ '自定义' if drill['is_custom'] else '预设' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>当前档位暂无预设项目，可直接添加自定义项目。</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>新增自定义训练项目</h2>
+    <form method="post" action="{{ url_for('add_custom_drill') }}" class="grid-form">
+        <label>
+            项目名称
+            <input type="text" name="name" required>
+        </label>
+        <label>
+            目标数量
+            <input type="number" name="default_target_count" min="1" value="30" required>
+        </label>
+        <label>
+            每组数量
+            <input type="number" name="default_set_size" min="1" value="15" required>
+        </label>
+        <label>
+            所属档位
+            <select name="level">
                 {% for level in range(1, 9) %}
-                    {{ level }} 妗�
+                    <option value="{{ level }}" {% if level == current_level %}selected{% endif %}>{{ level }} 档</option>
                 {% endfor %}
-             娣诲姞椤圭洰
-鏂板缁冧範璁板綍
-鏃ユ湡 鎬绘椂闀匡紙鍒嗛挓锛� 鐘舵€佽瘎鍒嗭紙1-5锛�
+            </select>
+        </label>
+        <button type="submit">添加项目</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>新增练习记录</h2>
+    <form method="post" action="{{ url_for('add_session') }}" class="grid-form">
+        <label>
+            日期
+            <input type="date" name="practice_date" required>
+        </label>
+        <label>
+            总时长（分钟）
+            <input type="number" name="total_duration_minutes" min="0" value="60" required>
+        </label>
+        <label>
+            状态评分（1-5）
+            <select name="state_rating">
                 {% for rating in range(1, 6) %}
-                    {{ rating }}
+                    <option value="{{ rating }}" {% if rating == 3 %}selected{% endif %}>{{ rating }}</option>
                 {% endfor %}
-             澶囨敞 淇濆瓨璁板綍
-鏈€杩戠粌涔犺褰�
-{% if recent_sessions %} {% for session in recent_sessions %} {% endfor %}
-鏃ユ湡
-鎬绘椂闀�
-鐘舵€佽瘎鍒�
-澶囨敞
-{{ session['practice_date'] }}
-{{ session['total_duration_minutes'] }} 鍒嗛挓
-{{ session['state_rating'] }}
-{{ session['note'] or '-' }}
-{% else %}
-鏆傛棤缁冧範璁板綍銆�
-{% endif %}
+            </select>
+        </label>
+        <label class="full-width">
+            备注
+            <textarea name="note" rows="3" placeholder="例如：定杆稳定，但低杆失误偏多"></textarea>
+        </label>
+        <button type="submit">保存记录</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>最近练习记录</h2>
+    {% if recent_sessions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>总时长</th>
+                    <th>状态评分</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in recent_sessions %}
+                    <tr>
+                        <td>{{ session['practice_date'] }}</td>
+                        <td>{{ session['total_duration_minutes'] }} 分钟</td>
+                        <td>{{ session['state_rating'] }}</td>
+                        <td>{{ session['note'] or '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('session_drills', session_id=session['id']) }}" class="text-link">
+                                录入训练详情
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>暂无练习记录。</p>
+    {% endif %}
+</section>
 {% endblock %}
