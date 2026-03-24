@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}训练详情录入 - 台球练球记录{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div class="section-head">
+        <div>
+            <h2>训练详情录入</h2>
+            <p>
+                练习日期：{{ session['practice_date'] }}
+                · 总时长：{{ session['total_duration_minutes'] }} 分钟
+                · 当前档位：{{ current_level }} 档
+            </p>
+        </div>
+        <a href="{{ url_for('index') }}" class="text-link">返回首页</a>
+    </div>
+</section>
+
+<section class="card">
+    <h2>填写项目数据</h2>
+    {% if drills %}
+        <form method="post" action="{{ url_for('save_session_drills', session_id=session['id']) }}">
+            <table>
+                <thead>
+                    <tr>
+                        <th>训练项目</th>
+                        <th>默认目标</th>
+                        <th>每组数量</th>
+                        <th>完成组数</th>
+                        <th>成功率（0-100）</th>
+                        <th>主观难度（1-5）</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for drill in drills %}
+                        {% set log = existing_log_map.get(drill['id']) %}
+                        <tr>
+                            <td>{{ drill['name'] }}</td>
+                            <td>{{ drill['default_target_count'] }}</td>
+                            <td>{{ drill['default_set_size'] }}</td>
+                            <td>
+                                <input
+                                    type="number"
+                                    name="set_count_{{ drill['id'] }}"
+                                    min="1"
+                                    value="{{ log['set_count'] if log else '' }}"
+                                    placeholder="例如 4"
+                                >
+                            </td>
+                            <td>
+                                <input
+                                    type="number"
+                                    name="success_rate_{{ drill['id'] }}"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                    value="{{ log['success_rate'] if log else '' }}"
+                                    placeholder="例如 78"
+                                >
+                            </td>
+                            <td>
+                                <select name="subjective_difficulty_{{ drill['id'] }}">
+                                    <option value="">未填写</option>
+                                    {% for difficulty in range(1, 6) %}
+                                        <option
+                                            value="{{ difficulty }}"
+                                            {% if log and log['subjective_difficulty'] == difficulty %}selected{% endif %}
+                                        >
+                                            {{ difficulty }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="form-actions">
+                <button type="submit">保存训练详情</button>
+            </div>
+        </form>
+    {% else %}
+        <p>当前档位暂无训练项目，请先回首页添加自定义项目。</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>填写规则</h2>
+    <ul class="hint-list">
+        <li>未填写的项目不会写入本次 session 的 drill_logs。</li>
+        <li>再次提交会覆盖本次 session 已有的训练详情。</li>
+        <li>成功率范围为 0-100，主观难度范围为 1-5。</li>
+    </ul>
+</section>
+{% endblock %}
