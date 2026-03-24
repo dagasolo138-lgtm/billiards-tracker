@@ -87,9 +87,6 @@ def init_db() -> None:
         cursor = connection.cursor()
 
         # 单用户设置表。
-        # 约束说明：
-        # - id 固定只用 1，便于单用户本地场景快速读取。
-        # - current_level 为用户当前档位，仅允许 1~8。
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users_settings (
@@ -116,10 +113,6 @@ def init_db() -> None:
         )
 
         # 训练项目定义表。
-        # 额外字段：
-        # - default_set_size：默认每组数量。
-        # - is_custom：是否为用户自定义项目。
-        # - is_active：后续可支持停用，而不是直接删除。
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS drills (
@@ -229,11 +222,7 @@ def create_custom_drill(
     level: int,
     default_set_size: int = 15,
 ) -> None:
-    """创建自定义训练项目。
-
-    这里的“自定义训练目标”通过 drills 表实现：
-    用户可以新增自己的训练项目，也可以在后续扩展为允许编辑目标数量。
-    """
+    """创建自定义训练项目。"""
     with get_connection() as connection:
         connection.execute(
             """
@@ -337,7 +326,7 @@ def get_drill_logs_by_session(session_id: int):
         return connection.execute(
             """
             SELECT
-                drill_logs.*, 
+                drill_logs.*,
                 drills.name AS drill_name,
                 drills.default_target_count,
                 drills.default_set_size
@@ -351,10 +340,7 @@ def get_drill_logs_by_session(session_id: int):
 
 
 def delete_drill_logs_by_session(session_id: int) -> None:
-    """删除某次练习下已有的项目记录。
-
-    用于重新提交 drill_logs 时覆盖旧值，避免同一个项目重复插入。
-    """
+    """删除某次练习下已有的项目记录。"""
     with get_connection() as connection:
         connection.execute(
             "DELETE FROM drill_logs WHERE session_id = ?;",
