@@ -268,6 +268,33 @@
       outline: none;
     }
 
+    .score-input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 44px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mic-btn {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .mic-btn.active {
+      border-color: rgba(79,209,197,0.6);
+      background: rgba(79,209,197,0.12);
+    }
+
     .btn {
       min-height: 48px;
       border: none;
@@ -745,7 +772,10 @@
                         <strong>第 ${idx + 1} 组</strong>
                         <span class="muted">/15</span>
                       </div>
-                      <input type="number" inputmode="numeric" min="0" max="15" step="1" data-score-index="${idx}" value="${escapeHtml(String(transient.scoreDrafts[idx] ?? ''))}" placeholder="0-15" />
+                      <div class="score-input-row">
+                        <input type="number" inputmode="numeric" min="0" max="15" step="1" data-score-index="${idx}" value="${escapeHtml(String(transient.scoreDrafts[idx] ?? ''))}" placeholder="0-15" />
+                        <button type="button" class="mic-btn" data-mic-index="${idx}" aria-label="语音输入第 ${idx + 1} 组进球数" title="语音输入">🎤</button>
+                      </div>
                     </div>
                   `).join('')}
                 </div>
@@ -1008,6 +1038,13 @@
           });
         });
 
+        document.querySelectorAll('[data-mic-index]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = Number(btn.getAttribute('data-mic-index'));
+            startScoreVoiceInput(idx);
+          });
+        });
+
         fillDemoBtn.addEventListener('click', () => {
           transient.scoreDrafts = transient.scoreDrafts.map((_, idx) => idx % 2 === 0 ? 11 : 13);
           renderCheckin();
@@ -1018,6 +1055,123 @@
           e.preventDefault();
           submitCheckin();
         });
+      }
+
+      function getSpeechRecognitionCtor() {
+        return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+      }
+
+      function startScoreVoiceInput(index) {
+        const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+        if (!SpeechRecognitionCtor) {
+          showToast('当前浏览器不支持语音识别。', true);
+          return;
+        }
+
+        if (transient.activeRecognition) {
+          try {
+            transient.activeRecognition.stop();
+          } catch (err) {}
+        }
+
+        const recognition = new SpeechRecognitionCtor();
+        transient.activeRecognition = recognition;
+        transient.activeMicIndex = index;
+
+        const micBtn = document.querySelector(`[data-mic-index="${index}"]`);
+        if (micBtn) micBtn.classList.add('active');
+
+        recognition.lang = 'zh-CN';
+        recognition.interimResults = false;
+        recognition.continuous = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+          const transcript = String(event.results?.[0]?.[0]?.transcript || '').trim();
+          const parsedScore = parseRecognizedScore(transcript);
+
+          if (Number.isInteger(parsedScore) && parsedScore >= 0 && parsedScore <= 15) {
+            transient.scoreDrafts[index] = String(parsedScore);
+            const input = document.querySelector(`[data-score-index="${index}"]`);
+            if (input) {
+              input.value = String(parsedScore);
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          } else {
+            showToast('没听清数字，再说一次。', true);
+          }
+
+          try {
+            recognition.stop();
+          } catch (err) {}
+        };
+
+        recognition.onerror = () => {
+          showToast('语音识别失败，请重试。', true);
+        };
+
+        recognition.onend = () => {
+          if (micBtn) micBtn.classList.remove('active');
+          if (transient.activeRecognition === recognition) {
+            transient.activeRecognition = null;
+            transient.activeMicIndex = null;
+          }
+        };
+
+        try {
+          recognition.start();
+        } catch (err) {
+          if (micBtn) micBtn.classList.remove('active');
+          transient.activeRecognition = null;
+          transient.activeMicIndex = null;
+          showToast('语音识别启动失败，请重试。', true);
+        }
+      }
+
+      function parseRecognizedScore(text) {
+        const normalized = String(text || '').trim().replace(/\s+/g, '');
+        if (!normalized) return null;
+
+        const digitMatch = normalized.match(/\d+/);
+        if (digitMatch) {
+          const num = Number(digitMatch[0]);
+          return Number.isFinite(num) ? num : null;
+        }
+
+        const chineseMap = {
+          零: 0, 〇: 0,
+          一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5,
+          六: 6, 七: 7, 八: 8, 九: 9
+        };
+
+        if (normalized === '十') return 10;
+        if (normalized === '十五') return 15;
+        if (normalized.startsWith('十')) {
+          const ones = chineseMap[normalized.slice(1)];
+          return typeof ones === 'number' ? 10 + ones : null;
+        }
+        if (normalized.endsWith('十')) {
+          const tens = chineseMap[normalized[0]];
+          return typeof tens === 'number' ? tens * 10 : null;
+        }
+        if (normalized.includes('十')) {
+          const [tensChar, onesChar] = normalized.split('十');
+          const tens = tensChar ? chineseMap[tensChar] : 1;
+          const ones = onesChar ? chineseMap[onesChar] : 0;
+          if (typeof tens === 'number' && typeof ones === 'number') return tens * 10 + ones;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(chineseMap, normalized)) {
+          return chineseMap[normalized];
+        }
+
+        const compactDigits = normalized.split('').map(char => chineseMap[char]).join('');
+        if (/^\d+$/.test(compactDigits)) {
+          const num = Number(compactDigits);
+          return Number.isFinite(num) ? num : null;
+        }
+
+        return null;
       }
 
       function submitCheckin() {
@@ -1421,7 +1575,7 @@
       window.billiardApp = {
         state,
         reset: () => localStorage.removeItem(STORAGE_KEY),
-        version: '1.0.0'
+        version: '1.1.0'
       };
     })();
   </script>
